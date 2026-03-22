@@ -2,7 +2,7 @@
 
 A Windows desktop GUI for [Claude Code CLI](https://code.claude.com) — interact with Claude Code through a clean chat interface instead of the terminal.
 
-![Claude Code GUI Screenshot](screenshot.png)
+
 
 ## Features
 
