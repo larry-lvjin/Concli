@@ -1,0 +1,5 @@
+D:\MyFile\CODE\VSCODE\ClaudeCodeUI\ClaudeCodeUI\bin\Release\net10.0-windows\publish\ClaudeCodeUI.exe
+D:\MyFile\CODE\VSCODE\ClaudeCodeUI\ClaudeCodeUI\bin\Release\net10.0-windows\publish\ClaudeCodeUI.dll
+D:\MyFile\CODE\VSCODE\ClaudeCodeUI\ClaudeCodeUI\bin\Release\net10.0-windows\publish\ClaudeCodeUI.deps.json
+D:\MyFile\CODE\VSCODE\ClaudeCodeUI\ClaudeCodeUI\bin\Release\net10.0-windows\publish\ClaudeCodeUI.runtimeconfig.json
+D:\MyFile\CODE\VSCODE\ClaudeCodeUI\ClaudeCodeUI\bin\Release\net10.0-windows\publish\ClaudeCodeUI.pdb

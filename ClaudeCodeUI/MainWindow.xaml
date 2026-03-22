@@ -1,0 +1,823 @@
+<Window x:Class="ClaudeCodeGUI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Claude Code"
+        Height="700" Width="1100"
+        MinHeight="480" MinWidth="800"
+        Background="#0D1117"
+        FontFamily="Consolas, Courier New"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        ResizeMode="CanResizeWithGrip">
+
+    <Window.Resources>
+
+        <!-- ── Main input box ── -->
+        <Style x:Key="InputStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#161B22"/>
+            <Setter Property="Foreground" Value="#E6EDF3"/>
+            <Setter Property="BorderBrush" Value="#30363D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CaretBrush" Value="#58A6FF"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontFamily" Value="Consolas, Courier New"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="AcceptsTab" Value="False"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="{TemplateBinding Padding}"
+                                          VerticalScrollBarVisibility="Auto"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="#0A84FF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ── Path box ── -->
+        <Style x:Key="PathBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#1C1C1E"/>
+            <Setter Property="Foreground" Value="#98989D"/>
+            <Setter Property="BorderBrush" Value="#2C2C2E"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CaretBrush" Value="#0A84FF"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="Consolas, Courier New"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="#0A84FF"/>
+                                <Setter Property="Foreground" Value="#E5E5EA"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ── Flat button (toolbar) ── -->
+        <Style x:Key="FlatButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#E5E5EA"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Arial"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.35"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.8"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ── Apple-style sidebar icon button ── -->
+        <Style x:Key="SidebarIconBtn" TargetType="Button">
+            <Setter Property="Foreground" Value="#636366"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="FontFamily" Value="Segoe UI Symbol, Segoe UI"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="Transparent"
+                                CornerRadius="6"
+                                Padding="2">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#2C2C2E"/>
+                                <Setter Property="Foreground" Value="#EBEBF0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#3A3A3C"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- TreeView -->
+        <Style TargetType="TreeView">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="#EBEBF0"/>
+        </Style>
+
+        <Style TargetType="TreeViewItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#EBEBF0"/>
+            <Setter Property="Padding" Value="3,2"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TreeViewItem">
+                        <StackPanel>
+                            <Border x:Name="Bd" Background="Transparent"
+                                    Padding="{TemplateBinding Padding}"
+                                    CornerRadius="6"
+                                    Margin="2,1,2,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="16"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ToggleButton x:Name="Expander" Grid.Column="0"
+                                                  IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
+                                                  Focusable="False"
+                                                  Width="14" Height="14">
+                                        <ToggleButton.Style>
+                                            <Style TargetType="ToggleButton">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ToggleButton">
+                                                            <TextBlock x:Name="chevron"
+                                                                       Text="&#x25B6;"
+                                                                       Foreground="#48484A"
+                                                                       FontSize="8"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center"/>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsChecked" Value="True">
+                                                                    <Setter TargetName="chevron" Property="Text" Value="&#x25BC;"/>
+                                                                    <Setter TargetName="chevron" Property="Foreground" Value="#636366"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ToggleButton.Style>
+                                    </ToggleButton>
+                                    <ContentPresenter Grid.Column="1"
+                                                      ContentSource="Header"
+                                                      VerticalAlignment="Center"
+                                                      Margin="2,0,0,0"/>
+                                </Grid>
+                            </Border>
+                            <ItemsPresenter x:Name="ItemsHost" Margin="18,0,0,0"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="False">
+                                <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed"/>
+                            </Trigger>
+                            <Trigger Property="HasItems" Value="False">
+                                <Setter TargetName="Expander" Property="Visibility" Value="Hidden"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#0A84FF22"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="False"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="#2C2C2E"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ══════════════ TITLE BAR (draggable, custom chrome) ══════════════ -->
+        <Border Grid.Row="0" Background="#141416"
+                BorderBrush="#2C2C2E" BorderThickness="0,0,0,1"
+                Padding="14,8"
+                MouseLeftButtonDown="TitleBar_DragMove">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Logo + title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="26" Height="26" CornerRadius="7"
+                            Background="#FF6B35" Margin="0,0,10,0">
+                        <TextBlock Text="C" Foreground="White" FontSize="13"
+                                   FontWeight="Bold" FontFamily="Segoe UI"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Claude Code" Foreground="#EBEBF0"
+                                   FontSize="13" FontWeight="SemiBold" FontFamily="Segoe UI"/>
+                        <TextBlock x:Name="SubtitleLabel" Text="Not started"
+                                   Foreground="#636366" FontSize="10" FontFamily="Segoe UI"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Status pill -->
+                <Border Grid.Column="2" Background="#1C1C1E" CornerRadius="9"
+                        Padding="8,3" Margin="0,0,10,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse x:Name="StatusDot" Width="6" Height="6"
+                                 Fill="#48484A" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="StatusText" Text="Idle"
+                                   Foreground="#636366" FontSize="11"
+                                   FontFamily="Segoe UI" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Window controls -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Minimize -->
+                    <Button Click="WinMinimize_Click"
+                            Background="Transparent" BorderThickness="0"
+                            Width="36" Height="28" Cursor="Hand"
+                            ToolTip="Minimize">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bg" Background="Transparent" CornerRadius="4">
+                                    <TextBlock Text="&#x2212;" Foreground="#636366"
+                                               FontSize="14" FontFamily="Segoe UI"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bg" Property="Background" Value="#2C2C2E"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                    <!-- Close -->
+                    <Button Click="WinClose_Click"
+                            Background="Transparent" BorderThickness="0"
+                            Width="36" Height="28" Cursor="Hand"
+                            ToolTip="Close">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bg" Background="Transparent" CornerRadius="4">
+                                    <TextBlock Text="&#x2715;" Foreground="#636366"
+                                               FontSize="12" FontFamily="Segoe UI"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bg" Property="Background" Value="#3A1A1A"/>
+                                        <Setter Property="Foreground" Value="#FF453A"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ══════════════ TOOLBAR ══════════════ -->
+        <Border Grid.Row="1" Background="#1C1C1E"
+                BorderBrush="#2C2C2E" BorderThickness="0,0,0,1"
+                Padding="12,7">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Dir:" Foreground="#636366"
+                           FontSize="11" FontFamily="Segoe UI"
+                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBox x:Name="WorkingDirBox" Grid.Column="1"
+                         Style="{StaticResource PathBox}"
+                         Text="C:\Users\PLAUD"
+                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <Button x:Name="BrowseButton" Grid.Column="2"
+                        Content="Browse"
+                        Background="#2C2C2E" Foreground="#EBEBF0"
+                        Style="{StaticResource FlatButton}"
+                        Padding="12,5" FontSize="12"
+                        Click="BrowseDir_Click" Margin="0,0,6,0"/>
+                <Button x:Name="StopButton" Grid.Column="3"
+                        Content="Stop"
+                        Background="#3A1A1A" Foreground="#FF453A"
+                        Style="{StaticResource FlatButton}"
+                        Padding="12,5" FontSize="12"
+                        IsEnabled="False"
+                        Click="StopSession_Click" Margin="0,0,6,0"/>
+                <Button Grid.Column="4"
+                        Content="Clear"
+                        Background="#2C2C2E" Foreground="#98989D"
+                        Style="{StaticResource FlatButton}"
+                        Padding="10,5" FontSize="11"
+                        Click="ClearOutput_Click" Margin="0,0,6,0"/>
+                <Button x:Name="SaveSkillBtn" Grid.Column="5"
+                        Content="&#x2728; Save as Skill"
+                        Background="#0A1F35" Foreground="#0A84FF"
+                        Style="{StaticResource FlatButton}"
+                        Padding="10,5" FontSize="11"
+                        FontFamily="Segoe UI" FontWeight="SemiBold"
+                        IsEnabled="False"
+                        Click="SaveAsSkill_Click"
+                        ToolTip="Let Claude summarize this conversation into a reusable Skill"
+                        Margin="0,0,6,0"/>
+                <Button Grid.Column="6"
+                        Content="New Task"
+                        Background="#1A2A1A" Foreground="#30D158"
+                        Style="{StaticResource FlatButton}"
+                        Padding="10,5" FontSize="11"
+                        FontFamily="Segoe UI"
+                        Click="NewTask_Click"
+                        ToolTip="Open a new Claude Code window"/>
+            </Grid>
+        </Border>
+
+        <!-- ══════════════ MAIN: SIDEBAR + CHAT ══════════════ -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="230" MinWidth="170" MaxWidth="380"/>
+                <ColumnDefinition Width="1"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ═══ SKILLS SIDEBAR ═══ -->
+            <Border Grid.Column="0" Background="#161618"
+                    BorderBrush="#2C2C2E" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- ── Header ── -->
+                    <Border Grid.Row="0"
+                            BorderBrush="#2C2C2E" BorderThickness="0,0,0,1"
+                            Padding="14,11,10,11">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Skills" Foreground="#EBEBF0"
+                                           FontSize="13" FontWeight="SemiBold"
+                                           FontFamily="Segoe UI" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="SkillsCountLabel" Text=""
+                                           Foreground="#48484A" FontSize="11"
+                                           FontFamily="Segoe UI" VerticalAlignment="Center"
+                                           Margin="6,0,0,0"/>
+                            </StackPanel>
+                            <!-- Action buttons row -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Style="{StaticResource SidebarIconBtn}"
+                                        ToolTip="New skill (.md file)"
+                                        Click="SkillNewSkill_Click">
+                                    <TextBlock Text="+" Foreground="#0A84FF" FontSize="17"
+                                               FontWeight="Light" FontFamily="Segoe UI"
+                                               Margin="0,-1,0,0"/>
+                                </Button>
+                                <Button Style="{StaticResource SidebarIconBtn}"
+                                        ToolTip="New group folder"
+                                        Click="SkillNewFolder_Click">
+                                    <TextBlock Text="&#x1F4C2;" FontSize="12"/>
+                                </Button>
+                                <Button Style="{StaticResource SidebarIconBtn}"
+                                        ToolTip="Save conversation as Skill (AI summarizes)"
+                                        Click="SkillGenerate_Click">
+                                    <TextBlock Text="&#x2728;" FontSize="11"/>
+                                </Button>
+                                <Button Style="{StaticResource SidebarIconBtn}"
+                                        ToolTip="Refresh"
+                                        Click="SkillRefresh_Click">
+                                    <TextBlock Text="&#x21BB;" FontSize="12" Foreground="#48484A"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- ── Search box ── -->
+                    <Border Grid.Row="1" Padding="8,6,8,6"
+                            BorderBrush="#2C2C2E" BorderThickness="0,0,0,1">
+                        <Border Background="#1C1C1E" CornerRadius="8"
+                                BorderBrush="#3A3A3C" BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="&#x1F50D;"
+                                           FontSize="11" Margin="8,0,4,0"
+                                           VerticalAlignment="Center" Foreground="#48484A"/>
+                                <TextBox x:Name="SkillSearchBox" Grid.Column="1"
+                                         Background="Transparent"
+                                         Foreground="#EBEBF0"
+                                         BorderThickness="0"
+                                         CaretBrush="#0A84FF"
+                                         FontSize="12" FontFamily="Segoe UI"
+                                         Padding="0,6,8,6"
+                                         TextChanged="SkillSearch_TextChanged"/>
+                            </Grid>
+                        </Border>
+                    </Border>
+
+                    <!-- ── Skill list (ItemsControl, not TreeView) ── -->
+                    <ScrollViewer Grid.Row="2"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Background="Transparent"
+                                  Padding="8,6,8,4">
+                        <ItemsControl x:Name="SkillsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <!-- Each item is a SkillItem (see CS) -->
+                                    <Border x:Name="CardBorder"
+                                            Background="Transparent"
+                                            CornerRadius="8"
+                                            Margin="0,2,0,2"
+                                            Padding="10,8,10,8"
+                                            Cursor="Hand"
+                                            MouseLeftButtonDown="SkillCard_Click">
+                                        <Border.ContextMenu>
+                                            <ContextMenu Background="#2C2C2E"
+                                                         BorderBrush="#3A3A3C" BorderThickness="1">
+                                                <MenuItem Header="&#x25B6;  Insert /command"
+                                                          Click="SkillUse_Click"
+                                                          Foreground="#0A84FF" Background="#2C2C2E"
+                                                          FontWeight="SemiBold" FontFamily="Segoe UI"/>
+                                                <Separator Background="#3A3A3C"/>
+                                                <MenuItem Header="   New skill here"
+                                                          Click="SkillNewSkill_Click"
+                                                          Foreground="#30D158" Background="#2C2C2E"
+                                                          FontFamily="Segoe UI"/>
+                                                <MenuItem Header="   Rename / edit description"
+                                                          Click="SkillRename_Click"
+                                                          Foreground="#EBEBF0" Background="#2C2C2E"
+                                                          FontFamily="Segoe UI"/>
+                                                <Separator Background="#3A3A3C"/>
+                                                <MenuItem Header="   Delete"
+                                                          Click="SkillDelete_Click"
+                                                          Foreground="#FF453A" Background="#2C2C2E"
+                                                          FontFamily="Segoe UI"/>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <!-- Command chip + name -->
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                                    <Border Background="#0A1F35" CornerRadius="4"
+                                                            Padding="5,2,5,2">
+                                                        <TextBlock Text="{Binding CmdDisplay}"
+                                                                   Foreground="#0A84FF"
+                                                                   FontSize="11"
+                                                                   FontFamily="Consolas, Courier New"
+                                                                   FontWeight="Bold"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding GroupTag}"
+                                                               Foreground="#3A3A3C"
+                                                               FontSize="10"
+                                                               FontFamily="Segoe UI"
+                                                               VerticalAlignment="Center"
+                                                               Margin="6,0,0,0"/>
+                                                </StackPanel>
+                                                <!-- Description -->
+                                                <TextBlock Text="{Binding DescSnippet}"
+                                                           Foreground="#636366"
+                                                           FontSize="10"
+                                                           FontFamily="Segoe UI"
+                                                           TextWrapping="Wrap"
+                                                           MaxWidth="160"/>
+                                            </StackPanel>
+                                            <!-- Insert arrow button -->
+                                            <Border Grid.Column="1"
+                                                    Background="#0A1F35" CornerRadius="6"
+                                                    Width="26" Height="26"
+                                                    VerticalAlignment="Center"
+                                                    Cursor="Hand"
+                                                    MouseLeftButtonDown="SkillCardInsert_Click"
+                                                    ToolTip="Insert /command">
+                                                <TextBlock Text="&#x25B6;"
+                                                           Foreground="#0A84FF"
+                                                           FontSize="9"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- ── Bottom: selected skill detail + insert btn ── -->
+                    <Border Grid.Row="3" Background="#111113"
+                            BorderBrush="#2C2C2E" BorderThickness="0,1,0,0"
+                            Padding="12,10">
+                        <StackPanel>
+                            <TextBlock x:Name="SkillPreviewCmd"
+                                       Text="No skill selected"
+                                       Foreground="#48484A" FontSize="12"
+                                       FontFamily="Consolas, Courier New"
+                                       FontWeight="Bold"/>
+                            <TextBlock x:Name="SkillPreviewDesc"
+                                       Text=""
+                                       Foreground="#3A3A3C" FontSize="10"
+                                       FontFamily="Segoe UI"
+                                       TextWrapping="Wrap"
+                                       Margin="0,4,0,0"
+                                       MaxHeight="44"/>
+                            <Button x:Name="SkillInsertBtn"
+                                    Content="&#x25B6;  Insert /command"
+                                    Background="#0A1F35" Foreground="#0A84FF"
+                                    Style="{StaticResource FlatButton}"
+                                    Padding="0,7" FontSize="12"
+                                    FontFamily="Segoe UI" FontWeight="SemiBold"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    Click="SkillUse_Click"
+                                    Margin="0,8,0,0"
+                                    IsEnabled="False"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Divider -->
+            <Border Grid.Column="1" Background="#2C2C2E"/>
+
+            <!-- ═══ CHAT ═══ -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <ScrollViewer x:Name="OutputScroller" Grid.Row="0"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Background="#0D1117" Padding="0">
+                    <StackPanel x:Name="ChatPanel" Margin="0,8,0,8"/>
+                </ScrollViewer>
+
+                <!-- Progress strip with scrolling activity log -->
+                <Border x:Name="ThinkingBar" Grid.Row="1"
+                        Background="#07111E"
+                        BorderBrush="#0A3060" BorderThickness="0,2,0,0"
+                        Visibility="Collapsed">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Top row: spinner + phase + elapsed -->
+                        <Grid Grid.Row="0" Margin="14,8,14,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Animated spinner dot -->
+                            <Border Grid.Column="0" Width="22" Height="22" CornerRadius="11"
+                                    Background="#0A2540" Margin="0,0,10,0" VerticalAlignment="Center">
+                                <TextBlock x:Name="SpinnerText" Text="⠋"
+                                           Foreground="#0A84FF" FontSize="13"
+                                           FontFamily="Consolas"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+
+                            <!-- Phase label -->
+                            <TextBlock Grid.Column="1" x:Name="ThinkingLabel"
+                                       Text="Sending"
+                                       Foreground="#0A84FF" FontSize="12"
+                                       FontFamily="Segoe UI" FontWeight="SemiBold"
+                                       VerticalAlignment="Center"/>
+
+                            <!-- Scrolling live output (marquee via clip) -->
+                            <Border Grid.Column="2" ClipToBounds="True" Margin="10,0,10,0">
+                                <TextBlock x:Name="LiveOutputLabel" Text=""
+                                           Foreground="#636366" FontSize="11"
+                                           FontFamily="Consolas, Courier New"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+
+                            <!-- Elapsed time -->
+                            <TextBlock Grid.Column="3" x:Name="ElapsedLabel" Text="0s"
+                                       Foreground="#0A84FF" FontSize="13"
+                                       FontFamily="Consolas" FontWeight="Bold"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- Progress bar track -->
+                        <Border Grid.Row="1" Height="2" Background="#0A2540" Margin="0,0,0,0">
+                            <Border x:Name="ProgressBarFill"
+                                    HorizontalAlignment="Left"
+                                    Width="0" Height="2"
+                                    Background="#0A84FF"
+                                    CornerRadius="1"/>
+                        </Border>
+
+                        <!-- Activity log (last 3 lines, small) -->
+                        <TextBlock x:Name="ThinkingSubLabel"
+                                   Grid.Row="0"
+                                   Visibility="Collapsed"
+                                   Foreground="#3A3A3C" FontSize="10"
+                                   FontFamily="Consolas"/>
+                    </Grid>
+                </Border>
+
+                <!-- Input area -->
+                <Border Grid.Row="2" Background="#1C1C1E"
+                        BorderBrush="#2C2C2E" BorderThickness="0,1,0,0"
+                        Padding="14,10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Image preview strip (hidden when no image) -->
+                        <Border x:Name="ImagePreviewBar" Grid.Row="0"
+                                Visibility="Collapsed"
+                                Background="#111113"
+                                BorderBrush="#2C2C2E" BorderThickness="0,0,0,1"
+                                Padding="10,6" Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Image x:Name="ImagePreviewThumb"
+                                       Grid.Column="0"
+                                       Width="40" Height="40"
+                                       Stretch="UniformToFill"
+                                       Margin="0,0,10,0"/>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock x:Name="ImagePreviewName"
+                                               Foreground="#EBEBF0" FontSize="12"
+                                               FontFamily="Segoe UI"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock x:Name="ImagePreviewSize"
+                                               Foreground="#636366" FontSize="10"
+                                               FontFamily="Segoe UI"/>
+                                </StackPanel>
+                                <Button Grid.Column="2"
+                                        Content="&#x2715;"
+                                        Background="Transparent" Foreground="#636366"
+                                        Style="{StaticResource FlatButton}"
+                                        Padding="6,4" FontSize="13"
+                                        Click="ClearImage_Click"
+                                        ToolTip="Remove image"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Input row -->
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Text input -->
+                            <Grid Grid.Column="0" Margin="0,0,8,0">
+                                <TextBox x:Name="InputBox"
+                                         Style="{StaticResource InputStyle}"
+                                         MinHeight="44" MaxHeight="140"
+                                         KeyDown="InputBox_KeyDown"
+                                         TextChanged="InputBox_TextChanged"/>
+                                <TextBlock x:Name="InputPlaceholder"
+                                           Text="Message...  (Enter = send,  Ctrl+Enter = new line)"
+                                           Foreground="#3A3A3C" FontSize="13"
+                                           FontFamily="Consolas, Courier New"
+                                           IsHitTestVisible="False"
+                                           VerticalAlignment="Top"
+                                           Margin="14,13,12,0"/>
+                            </Grid>
+
+                            <!-- Image attach button -->
+                            <Button x:Name="AttachImageBtn" Grid.Column="1"
+                                    Width="44" Height="44"
+                                    Background="#1C1C1E"
+                                    Style="{StaticResource FlatButton}"
+                                    Padding="0"
+                                    IsEnabled="False"
+                                    Click="AttachImage_Click"
+                                    ToolTip="Attach image (PNG, JPG, WEBP)"
+                                    VerticalAlignment="Bottom"
+                                    Margin="0,0,6,0">
+                                <Border Width="44" Height="44" CornerRadius="8"
+                                        Background="#2C2C2E">
+                                    <TextBlock Text="&#x1F4CE;"
+                                               FontSize="18"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                            </Button>
+
+                            <!-- Send button -->
+                            <Button x:Name="SendButton" Grid.Column="2"
+                                    Content="Send"
+                                    Width="88" Height="44"
+                                    Background="#0A84FF" Foreground="#FFFFFF"
+                                    Style="{StaticResource FlatButton}"
+                                    Padding="0" FontSize="14" FontWeight="SemiBold"
+                                    FontFamily="Segoe UI"
+                                    IsEnabled="False"
+                                    Click="SendMessage_Click"
+                                    VerticalAlignment="Bottom"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- ══════════════ STATUS BAR ══════════════ -->
+        <Border Grid.Row="3" Background="#141416"
+                BorderBrush="#2C2C2E" BorderThickness="0,1,0,0"
+                Padding="16,5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusBar"
+                           Text="Click Browse to select a working directory."
+                           Foreground="#48484A" FontSize="11"
+                           FontFamily="Segoe UI" VerticalAlignment="Center"/>
+                <TextBlock x:Name="TurnCounter" Grid.Column="1"
+                           Text="" Foreground="#48484A" FontSize="11"
+                           FontFamily="Segoe UI" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>
