@@ -1,0 +1,352 @@
+# ============================================================
+# 双发布 workflow：私有仓库存档 + 公开仓库分发
+#
+# 打一个 tag，同时产出两处 Release：
+#
+#   larry-lvjin/<项目>    (private)  exe + 完整源码包
+#   larry-plaud/<项目>    (public)   exe + README（给同事 / TMS 平台）
+#
+# 两个账号下的仓库可以同名，互不冲突。
+#
+# 源码包是 GitHub 给每个 Release 自动附加的，内容 = 该仓库该 tag 的文件树。
+# 所以私有那边是完整源码，公开那边只有 README —— 不需要配置，自然分开。
+#
+# ------------------------------------------------------------
+# 首次使用需要做的三件事
+#
+# 1. 手工建公开仓库（用 larry-plaud 账号）
+#    名字：和源码仓库同名            ← 大小写完全一致
+#    Visibility: Public
+#    勾选 Add a README file          ← 空仓库发不了 Release，必须勾
+#
+#    例：larry-lvjin/LTECurrentTool → larry-plaud/LTECurrentTool
+#
+#    注意：不要在 VS 里把这个仓库加成第二个 remote，也不要 push 代码过去。
+#    那样源码会全部公开。exe 由 workflow 通过 API 推送，不经过 git push。
+#
+# 2. 生成 PAT（用 larry-plaud 账号登录）
+#    Settings → Developer settings → Personal access tokens
+#      → Fine-grained tokens → Generate new token
+#    - Resource owner:       larry-plaud
+#    - Expiration:           1 year（别选 No expiration，记个到期提醒）
+#    - Repository access:    All repositories
+#    - Permissions → Repositories → Contents: Read and write
+#      （只需要这一项。仓库手工建的，不需要 Administration）
+#    生成后立刻复制，只显示一次
+#
+# 3. 存进本仓库（larry-lvjin/<项目>）
+#    Settings → Secrets and variables → Actions → New repository secret
+#    Name: RELEASE_TOKEN     Secret: 粘贴 PAT
+#
+# ------------------------------------------------------------
+# 另外建议在仓库根目录写一份 README.public.md（对外版）：
+#   只写用途、界面截图、环境要求、使用步骤。
+#   不要写内部文档索引、标定阈值、SCPI 硬约束这类内容。
+#   没有这个文件时 workflow 会打一条 warning 然后跳过同步，其余照常。
+#
+# 放置位置：<仓库根目录>/.github/workflows/release.yml
+#            必须在根目录，放进 src/ 里 GitHub 不会读
+# ============================================================
+
+name: Auto Release Single EXE on Tag
+
+on:
+  push:
+    tags: ['v*', 'V*']           # 只有打 tag 才触发
+  workflow_dispatch:             # Actions 页面可手动跑，不发版
+
+permissions:
+  contents: write                # 在本仓库创建 Release 必需
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  RUNTIME_ID: ''                 # 留空 = 自动读 csproj 的 PlatformTarget 决定 win-x64 / win-x86
+  PROJECT: ''                    # 留空 = 自动查找唯一 csproj。多个时填路径，如 src/App/App.csproj
+  OUTPUT_NAME: ''                # 留空 = exe 名用仓库名。填了就用这个
+  PUBLIC_OWNER: 'larry-plaud'    # 公开发布仓库的所属账号
+  PUBLIC_SUFFIX: ''              # 公开仓库名 = 本仓库名 + 这个后缀。留空 = 同名
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest      # WPF 只能在 Windows runner 上编译
+
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+
+      - name: 配置 .NET 环境
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # ==================== 编译 ====================
+
+      - name: 定位项目文件
+        id: proj
+        shell: pwsh
+        run: |
+          $p = '${{ env.PROJECT }}'.Trim()
+
+          if ($p -ne '') {
+            if (-not (Test-Path $p)) {
+              Write-Host "::error::env.PROJECT 指定的文件不存在：$p"
+              exit 1
+            }
+          }
+          else {
+            $found = Get-ChildItem -Recurse -Filter *.csproj |
+                     Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }
+
+            if ($found.Count -eq 0) {
+              Write-Host "::error::仓库里找不到任何 .csproj 文件"
+              exit 1
+            }
+            if ($found.Count -gt 1) {
+              Write-Host "找到多个 csproj："
+              $found | ForEach-Object { Write-Host "  - $($_.Name)" }
+              Write-Host "::error::请在 env.PROJECT 里指定主项目路径"
+              exit 1
+            }
+            $p = $found[0].FullName
+          }
+
+          Write-Host "使用项目：$p"
+          "path=$p" >> $env:GITHUB_OUTPUT
+
+          # ---- 决定 RuntimeIdentifier ----
+          # csproj 里指定了 x86（通常是依赖 32 位仪器驱动 DLL）时必须编成 win-x86，
+          # 否则会报 NETSDK1032: RuntimeIdentifier 与 PlatformTarget 不兼容
+          $rid = '${{ env.RUNTIME_ID }}'.Trim()
+
+          if ($rid -eq '') {
+            $xml = Get-Content $p -Raw
+
+            if ($xml -match '<PlatformTarget>\s*(?<t>[^<]+?)\s*</PlatformTarget>') {
+              $target = $Matches['t']
+            }
+            elseif ($xml -match '<Platforms>\s*(?<t>[^<]+?)\s*</Platforms>') {
+              # <Platforms>x86;x64</Platforms> 取第一个
+              $target = ($Matches['t'] -split ';')[0].Trim()
+            }
+            else {
+              $target = 'AnyCPU'
+            }
+
+            switch -Regex ($target) {
+              '^(?i)x86$'   { $rid = 'win-x86'; break }
+              '^(?i)ARM64$' { $rid = 'win-arm64'; break }
+              default       { $rid = 'win-x64' }
+            }
+
+            Write-Host "csproj PlatformTarget = $target  →  RuntimeIdentifier = $rid"
+          }
+          else {
+            Write-Host "使用 env.RUNTIME_ID 指定的：$rid"
+          }
+
+          "rid=$rid" >> $env:GITHUB_OUTPUT
+
+      - name: 还原依赖
+        run: dotnet restore "${{ steps.proj.outputs.path }}"
+
+      - name: 发布单文件 EXE
+        run: >
+          dotnet publish "${{ steps.proj.outputs.path }}"
+          -c Release
+          -r ${{ steps.proj.outputs.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:DebugType=none
+          -p:GenerateDocumentationFile=false
+          -o publish
+
+      - name: 查看发布产物
+        shell: pwsh
+        run: |
+          Write-Host "publish 目录内容："
+          Get-ChildItem publish | Sort-Object Length -Descending | ForEach-Object {
+            "{0,-50} {1,8:N1} MB" -f $_.Name, ($_.Length / 1MB)
+          }
+
+      - name: 重命名 EXE
+        id: rename
+        shell: pwsh
+        run: |
+          # 定位主 exe：publish 里最大的那个
+          # 自包含主程序几十 MB，远大于 createdump.exe 之类的附属程序
+          $exe = Get-ChildItem publish -Filter *.exe |
+                 Sort-Object Length -Descending |
+                 Select-Object -First 1
+
+          if ($null -eq $exe) {
+            Write-Host "::error::publish 目录里没有 exe，请看上一步的产物列表"
+            exit 1
+          }
+          Write-Host "主程序：$($exe.Name)"
+
+          # 输出名：OUTPUT_NAME 优先，否则用仓库名
+          $name = '${{ env.OUTPUT_NAME }}'.Trim()
+          if ($name -eq '') { $name = '${{ github.event.repository.name }}' }
+
+          # 版本号：tag 去掉开头的 v/V，统一输出成大写 V
+          $ver = "${{ github.ref_name }}" -replace '^[vV]', ''
+          if ($ver -eq '') { $ver = 'dev' }
+
+          $dst = "${name}V$ver.exe"
+          Rename-Item -Path $exe.FullName -NewName $dst -Force
+
+          $size = [math]::Round((Get-Item "publish/$dst").Length / 1MB, 1)
+          Write-Host "生成：$dst  ($size MB)"
+
+          "exe=publish/$dst" >> $env:GITHUB_OUTPUT
+          "name=$dst"        >> $env:GITHUB_OUTPUT
+
+      - name: 上传构建产物（仅手动触发）
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.rename.outputs.name }}
+          path: ${{ steps.rename.outputs.exe }}
+
+      # ============ 发布之一：私有仓库（exe + 完整源码） ============
+
+      - name: 发布到本仓库 Releases
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.rename.outputs.exe }}
+          generate_release_notes: true
+          body: |
+            ### 下载
+
+            `${{ steps.rename.outputs.name }}` — 自包含单文件，下载后直接运行，无需安装 .NET 运行时。
+
+            完整源码见下方 Source code。
+
+      # ============ 发布之二：公开仓库（只有 exe） ============
+
+      - name: 检查公开发布仓库
+        if: startsWith(github.ref, 'refs/tags/')
+        id: pubrepo
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          $repoName = '${{ github.event.repository.name }}${{ env.PUBLIC_SUFFIX }}'
+          $target   = '${{ env.PUBLIC_OWNER }}/' + $repoName
+
+          if ([string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
+            Write-Host "::error::未配置 RELEASE_TOKEN。见本文件顶部说明第 2、3 步。"
+            exit 1
+          }
+
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept        = 'application/vnd.github+json'
+          }
+
+          # --- 仓库是否存在 ---
+          try {
+            $repo = Invoke-RestMethod -Uri "https://api.github.com/repos/$target" -Headers $headers
+            Write-Host "目标仓库：$target"
+          }
+          catch {
+            Write-Host "::error::找不到仓库 $target"
+            Write-Host "请先手工创建：用 ${{ env.PUBLIC_OWNER }} 账号新建仓库，名字叫 $repoName（大小写一致），"
+            Write-Host "Visibility 选 Public，并勾选 Add a README file。"
+            exit 1
+          }
+
+          # --- 是否 Public ---
+          if ($repo.private) {
+            Write-Host "::warning::$target 是 private，公开下载链接不可用。请到 Settings → Danger Zone 改成 Public。"
+          }
+
+          # --- 是否为空仓库（没有任何提交，Release 会创建失败）---
+          try {
+            Invoke-RestMethod -Headers $headers `
+              -Uri "https://api.github.com/repos/$target/commits?per_page=1" | Out-Null
+          }
+          catch {
+            Write-Host "::error::$target 是空仓库，无法创建 Release。"
+            Write-Host "请到 https://github.com/$target 点 Add file → Create new file，"
+            Write-Host "新建 README.md（内容随便写一行）并提交，然后重新打 tag。"
+            exit 1
+          }
+
+          "target=$target" >> $env:GITHUB_OUTPUT
+
+      - name: 同步 README 到公开仓库
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          $target  = '${{ steps.pubrepo.outputs.target }}'
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept        = 'application/vnd.github+json'
+          }
+
+          # 只同步 README.public.md（对外版）。找不到就跳过，绝不回退到内部 README.md ——
+          # 内部版含源码路径索引和内部方法学描述，不适合公开。
+          if (-not (Test-Path 'README.public.md')) {
+            Write-Host "::warning::未找到 README.public.md，跳过 README 同步。"
+            Write-Host "如需同步，在仓库根目录新建 README.public.md，只写对外的使用说明。"
+            exit 0
+          }
+
+          $content = [Convert]::ToBase64String([IO.File]::ReadAllBytes('README.public.md'))
+
+          # 目标已有 README 时必须带 sha 才能覆盖
+          $sha = $null
+          try {
+            $existing = Invoke-RestMethod -Headers $headers `
+              -Uri "https://api.github.com/repos/$target/contents/README.md"
+            $sha = $existing.sha
+          } catch { }
+
+          $body = @{
+            message = 'Sync README from source repo (${{ github.ref_name }})'
+            content = $content
+          }
+          if ($sha) { $body['sha'] = $sha }
+
+          Invoke-RestMethod -Method Put `
+            -Uri "https://api.github.com/repos/$target/contents/README.md" `
+            -Headers $headers `
+            -Body ($body | ConvertTo-Json) `
+            -ContentType 'application/json' | Out-Null
+
+          Write-Host "README 已同步到 $target"
+
+      - name: 发布到公开仓库 Releases
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: ${{ steps.pubrepo.outputs.target }}
+          token: ${{ secrets.RELEASE_TOKEN }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.event.repository.name }} ${{ github.ref_name }}
+          files: ${{ steps.rename.outputs.exe }}
+          body: |
+            ### 下载
+
+            `${{ steps.rename.outputs.name }}` — 自包含单文件，下载后直接运行，无需安装 .NET 运行时。
+
+            使用说明见仓库首页 README。
+
+      - name: 输出发布地址
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $t = '${{ steps.pubrepo.outputs.target }}'
+          Write-Host "===================================================="
+          Write-Host "公开下载页（贴进 Notion / TMS 用这个，永远指向最新版）："
+          Write-Host "  https://github.com/$t/releases/latest"
+          Write-Host ""
+          Write-Host "本版直链："
+          Write-Host "  https://github.com/$t/releases/download/${{ github.ref_name }}/${{ steps.rename.outputs.name }}"
+          Write-Host "===================================================="

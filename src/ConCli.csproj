@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>ConCli.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+  </ItemGroup>
+
+  <!-- The old profile / gateway / credential layer. Out of the build, kept on disk only
+       because it is not in git yet; delete _attic\ once you are sure it is not coming back. -->
+  <ItemGroup>
+    <Compile Remove="_attic\**" />
+    <Page Remove="_attic\**" />
+    <None Remove="_attic\**" />
+  </ItemGroup>
+
+  <!-- xterm.js is vendored, not pulled from a CDN: the app must work offline. -->
+  <ItemGroup>
+    <Content Include="Terminal\xterm\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="ConCli.ico" />
+  </ItemGroup>
+
+</Project>

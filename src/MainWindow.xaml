@@ -1,0 +1,793 @@
+﻿<ui:FluentWindow x:Class="ConCli.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:ConCli"
+        Title="concli"
+        Height="680" Width="1080"
+        MinHeight="540" MinWidth="960"
+        FontFamily="Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI"
+        Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+        WindowStartupLocation="CenterScreen"
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica"
+        WindowCornerPreference="Round">
+
+    <Window.Resources>
+
+        <!-- ══════════ Subtle icon button (row actions, tab close) ══════════ -->
+        <Style x:Key="IconBtn" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background"
+                                        Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background"
+                                        Value="{DynamicResource SubtleFillColorTertiaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ══════════ Subtle icon toggle (the history sidebar switch) ══════════ -->
+        <Style x:Key="IconToggle" TargetType="ToggleButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource AccentTextFillColorPrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background"
+                                        Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background"
+                                        Value="{DynamicResource SubtleFillColorTertiaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ══════════ History list ══════════ -->
+        <Style x:Key="HistoryRow" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="11,8"/>
+            <Setter Property="Margin" Value="6,1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Grid>
+                            <Border x:Name="bd" Background="Transparent" CornerRadius="5"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter/>
+                            </Border>
+                            <Border x:Name="pill" Width="3" Height="18" CornerRadius="1.5"
+                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                    Visibility="Collapsed"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background"
+                                        Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="bd" Property="Background"
+                                        Value="{DynamicResource SubtleFillColorTertiaryBrush}"/>
+                                <Setter TargetName="pill" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate x:Key="HistoryItemTemplate" DataType="{x:Type local:HistoryItem}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,0">
+                    <ui:SymbolIcon x:Name="favMark" DockPanel.Dock="Left" Symbol="Star24"
+                                   Filled="True" FontSize="12" Margin="0,0,5,0"
+                                   Visibility="Collapsed" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SystemFillColorCautionBrush}"/>
+                    <TextBlock Text="{Binding Title}"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                               FontSize="12.5" TextTrimming="CharacterEllipsis"/>
+                </DockPanel>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,3,8,0" FontSize="11"
+                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                           TextTrimming="CharacterEllipsis">
+                    <Run Text="{Binding Project, Mode=OneWay}"/>
+                    <Run Text="·"/>
+                    <Run Text="{Binding TurnText, Mode=OneWay}"/>
+                </TextBlock>
+
+                <!-- Time and the row actions share a slot: hovering swaps one for the
+                     other, so the row never changes width. -->
+                <TextBlock x:Name="ago" Grid.Row="0" Grid.Column="1" Grid.RowSpan="2"
+                           Text="{Binding Ago}" FontSize="11" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+
+                <StackPanel x:Name="actions" Grid.Row="0" Grid.Column="1" Grid.RowSpan="2"
+                            Orientation="Horizontal" VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                    <Button Style="{StaticResource IconBtn}" Width="26" Height="26"
+                            Click="FavoriteItem_Click" ToolTip="收藏 / 取消收藏">
+                        <ui:SymbolIcon x:Name="favGlyph" Symbol="Star24" FontSize="14"/>
+                    </Button>
+                    <Button Style="{StaticResource IconBtn}" Width="26" Height="26"
+                            Click="PinItem_Click" ToolTip="置顶 / 取消置顶">
+                        <ui:SymbolIcon x:Name="pinGlyph" Symbol="Pin24" FontSize="14"/>
+                    </Button>
+                    <Button Style="{StaticResource IconBtn}" Width="26" Height="26"
+                            Click="HideItem_Click" ToolTip="从列表移除（原始记录文件保留，可恢复）">
+                        <ui:SymbolIcon Symbol="Delete24" FontSize="14"/>
+                    </Button>
+                </StackPanel>
+
+                <Grid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="收藏 / 取消收藏" Click="FavoriteItem_Click">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon Symbol="Star24"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="置顶 / 取消置顶" Click="PinItem_Click">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon Symbol="Pin24"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="重命名…" Click="RenameItem_Click">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon Symbol="Rename24"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="在此目录打开 PowerShell" Click="OpenFolderTerminal_Click">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon Symbol="WindowConsole20"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="在资源管理器中打开" Click="RevealFolder_Click">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon Symbol="FolderOpen24"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="复制会话 ID" Click="CopyId_Click">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon Symbol="Copy24"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem Header="从列表移除" Click="HideItem_Click">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon Symbol="Delete24"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="彻底删除（含原始记录文件）…" Click="PurgeItem_Click"/>
+                    </ContextMenu>
+                </Grid.ContextMenu>
+            </Grid>
+
+            <DataTemplate.Triggers>
+                <DataTrigger Value="True"
+                             Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}">
+                    <Setter TargetName="actions" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="ago" Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Favorite}" Value="True">
+                    <Setter TargetName="favMark" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="favGlyph" Property="Filled" Value="True"/>
+                    <Setter TargetName="favGlyph" Property="Foreground"
+                            Value="{DynamicResource SystemFillColorCautionBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Pinned}" Value="True">
+                    <Setter TargetName="pinGlyph" Property="Filled" Value="True"/>
+                    <Setter TargetName="pinGlyph" Property="Foreground"
+                            Value="{DynamicResource AccentTextFillColorPrimaryBrush}"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- ══════════ Sidebar mode switch (会话 / 文件夹) ══════════ -->
+        <Style x:Key="ModeTab" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border Background="Transparent" Padding="0,2">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </Trigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- ══════════ Folder view: project row (inside a project, rows use HistoryItemTemplate) ══════════ -->
+        <DataTemplate x:Key="ProjectEntryTemplate" DataType="{x:Type local:ProjectEntry}">
+            <Grid ToolTip="{Binding Cwd}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <ui:SymbolIcon Grid.RowSpan="2" Symbol="Folder24" FontSize="16"
+                               Margin="0,0,9,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource SystemFillColorCautionBrush}"/>
+                <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="0,0,8,0"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                           FontSize="12.5" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Info}" Margin="0,3,8,0"
+                           FontSize="11" TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                <TextBlock Grid.Column="2" Grid.RowSpan="2" Text="{Binding Ago}" FontSize="11"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+
+                <Grid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="打开" Click="ProjectOpen_Click">
+                            <MenuItem.Icon><ui:SymbolIcon Symbol="Open24"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="在此目录打开 PowerShell" Click="ProjectTerminal_Click">
+                            <MenuItem.Icon><ui:SymbolIcon Symbol="WindowConsole20"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="在资源管理器中打开" Click="ProjectReveal_Click">
+                            <MenuItem.Icon><ui:SymbolIcon Symbol="FolderOpen24"/></MenuItem.Icon>
+                        </MenuItem>
+                    </ContextMenu>
+                </Grid.ContextMenu>
+            </Grid>
+        </DataTemplate>
+
+        <!-- ══════════ Terminal tab ══════════
+             Width comes from ChromeTabPanel. As tabs shrink, inactive ones drop the close
+             button (Narrow), then all drop the title (Tiny) — an active tiny tab shows only
+             its close button, like Chrome. -->
+        <DataTemplate x:Key="TabTemplate" DataType="{x:Type local:TerminalTab}">
+            <Border x:Name="tb" Background="Transparent" CornerRadius="6"
+                    Margin="0,0,2,0" Cursor="Hand" ToolTip="{Binding Title}"
+                    MouseLeftButtonDown="Tab_Click" MouseUp="Tab_MouseUp">
+                <Border.ContextMenu>
+                    <ContextMenu Opened="TabMenu_Opened">
+                        <MenuItem Header="在右侧新建标签页" Click="TabNewRight_Click">
+                            <MenuItem.Icon><ui:SymbolIcon Symbol="Add24"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="复制标签页" Click="TabDuplicate_Click">
+                            <MenuItem.Icon><ui:SymbolIcon Symbol="Copy24"/></MenuItem.Icon>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem Header="在资源管理器中打开目录" Click="TabReveal_Click">
+                            <MenuItem.Icon><ui:SymbolIcon Symbol="FolderOpen24"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="复制目录路径" Click="TabCopyPath_Click"/>
+                        <Separator/>
+                        <MenuItem Header="另存为…" Click="TabSaveAs_Click">
+                            <MenuItem.Icon><ui:SymbolIcon Symbol="Save24"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="关闭其他标签页" Tag="others" Click="TabCloseOthers_Click"/>
+                        <MenuItem Header="关闭右侧标签页" Tag="right" Click="TabCloseRight_Click"/>
+                    </ContextMenu>
+                </Border.ContextMenu>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Ellipse x:Name="dot" Grid.Column="0" Width="7" Height="7" Margin="11,0,8,0"
+                             VerticalAlignment="Center"
+                             Fill="{DynamicResource SystemFillColorSuccessBrush}"/>
+                    <TextBlock x:Name="tt" Grid.Column="1" Text="{Binding Title}"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               FontSize="12.5"
+                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                    <Button x:Name="close" Grid.Column="2" Click="TabClose_Click" Margin="4,0,4,0"
+                            Style="{StaticResource IconBtn}" Width="22" Height="22"
+                            ToolTip="关闭标签页">
+                        <ui:SymbolIcon Symbol="Dismiss24" FontSize="11"/>
+                    </Button>
+                </Grid>
+            </Border>
+            <DataTemplate.Triggers>
+                <Trigger SourceName="tb" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="tb" Property="Background"
+                            Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                </Trigger>
+                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                    <Setter TargetName="tb" Property="Background"
+                            Value="{DynamicResource ControlFillColorDefaultBrush}"/>
+                    <Setter TargetName="tt" Property="Foreground"
+                            Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Exited}" Value="True">
+                    <Setter TargetName="dot" Property="Fill"
+                            Value="{DynamicResource TextFillColorDisabledBrush}"/>
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Narrow}" Value="True"/>
+                        <Condition Binding="{Binding IsActive}" Value="False"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="close" Property="Visibility" Value="Collapsed"/>
+                </MultiDataTrigger>
+                <DataTrigger Binding="{Binding Tiny}" Value="True">
+                    <Setter TargetName="tt" Property="Visibility" Value="Collapsed"/>
+                    <Setter TargetName="dot" Property="Grid.ColumnSpan" Value="3"/>
+                    <Setter TargetName="dot" Property="HorizontalAlignment" Value="Center"/>
+                    <Setter TargetName="dot" Property="Margin" Value="0"/>
+                    <Setter TargetName="close" Property="Grid.Column" Value="0"/>
+                    <Setter TargetName="close" Property="Grid.ColumnSpan" Value="3"/>
+                    <Setter TargetName="close" Property="HorizontalAlignment" Value="Center"/>
+                    <Setter TargetName="close" Property="Margin" Value="0"/>
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Tiny}" Value="True"/>
+                        <Condition Binding="{Binding IsActive}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="dot" Property="Visibility" Value="Collapsed"/>
+                </MultiDataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- ══════════ Row in the tab-search popup ══════════ -->
+        <Style x:Key="TabSearchRow" TargetType="ListBoxItem"
+               BasedOn="{StaticResource {x:Type ListBoxItem}}">
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="MinHeight" Value="0"/>
+        </Style>
+        <DataTemplate x:Key="TabSearchTemplate" DataType="{x:Type local:TerminalTab}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Ellipse x:Name="dot" Width="7" Height="7" Margin="4,0,12,0"
+                         VerticalAlignment="Center"
+                         Fill="{DynamicResource SystemFillColorSuccessBrush}"/>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" FontSize="12.5" TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <TextBlock Text="{Binding Cwd}" FontSize="11" Margin="0,2,0,0"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                </StackPanel>
+                <Button Grid.Column="2" Click="TabSearchClose_Click" Margin="8,0,0,0"
+                        Style="{StaticResource IconBtn}" Width="24" Height="24"
+                        ToolTip="关闭标签页">
+                    <ui:SymbolIcon Symbol="Dismiss24" FontSize="11"/>
+                </Button>
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Exited}" Value="True">
+                    <Setter TargetName="dot" Property="Fill"
+                            Value="{DynamicResource TextFillColorDisabledBrush}"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="36"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="SidebarCol" Width="31.297"/>
+            <ColumnDefinition Width="12.481"/>
+            <ColumnDefinition Width="248.222"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ═══════ top band ═══════
+             `ui:TitleBar` answers WM_NCHITTEST with HTCAPTION for *its whole rect*, and it
+             only exempts its own Header/CenterContent/TrailingContent — it does not consult
+             WindowChrome.IsHitTestVisibleInChrome, and it knows nothing about siblings drawn
+             on top of it. So a full-width title bar silently eats every click in this row:
+             the tabs render, highlight on hover, and ignore the mouse (UIA still drives them,
+             which is how automation missed it). It is therefore kept down to just the caption
+             buttons at the right, and the rest of the band is ordinary content. -->
+
+        <!-- Drag layer, underneath everything else in the row. Transparent but hit-testable,
+             so empty space still moves the window and double-click still maximizes. -->
+        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="5" Background="Transparent"
+                MouseLeftButtonDown="TitleBand_MouseDown"/>
+
+        <!-- App identity. IsHitTestVisible="False" on purpose: it should drag, not click. -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="14,0,0,0"
+                    VerticalAlignment="Center" IsHitTestVisible="False" Grid.ColumnSpan="3">
+            <ui:SymbolIcon Symbol="WindowConsole20" FontSize="16"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+            <TextBlock Text="ConCli" Margin="10,0,0,0" FontSize="12.5" VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+        </StackPanel>
+
+        <!-- Tab strip + caption buttons share the content column. Two columns rather than a
+             hand-tuned right margin on the strip: the caption bar sizes itself, and a margin
+             guessed too small puts tabs back under its rect where they stop taking clicks. -->
+        <Grid Grid.Row="0" Grid.Column="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0" Margin="8,3,8,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Lives out here rather than in the sidebar: a switch inside
+                 the sidebar is unreachable once the sidebar is hidden. -->
+                <ToggleButton x:Name="HistoryToggle" Grid.Column="0" Margin="0,0,6,0"
+                          Style="{StaticResource IconToggle}" IsChecked="True"
+                          Checked="ToggleSidebar_Click" Unchecked="ToggleSidebar_Click"
+                          AutomationProperties.Name="历史侧栏"
+                          ToolTip="显示 / 隐藏历史侧栏">
+                    <ui:SymbolIcon Symbol="History24" FontSize="15"/>
+                </ToggleButton>
+
+                <!-- Chrome's "search tabs" drop-down: the way to reach any tab once there are
+                     too many to read in the strip.  (Ctrl+Shift+A) -->
+                <Button x:Name="TabSearchBtn" Grid.Column="1" Style="{StaticResource IconBtn}"
+                        Margin="0,0,4,0" Click="TabSearch_Click"
+                        AutomationProperties.Name="搜索标签页"
+                        ToolTip="搜索标签页　(Ctrl+Shift+A)">
+                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="13"/>
+                </Button>
+
+                <Popup x:Name="TabSearchPopup" PlacementTarget="{Binding ElementName=TabSearchBtn}"
+                       Placement="Bottom" VerticalOffset="4" StaysOpen="False"
+                       AllowsTransparency="True" PopupAnimation="Fade"
+                       Opened="TabSearchPopup_Opened" Closed="TabSearchPopup_Closed">
+                    <Border Width="340" Margin="0,0,10,10" CornerRadius="8" Padding="0,0,0,6"
+                            Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.35"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <ui:TextBox x:Name="TabSearchBox" Margin="10,10,10,6"
+                                        PlaceholderText="搜索标签页" FontSize="12.5"
+                                        ClearButtonEnabled="True"
+                                        TextChanged="TabSearchBox_TextChanged"
+                                        PreviewKeyDown="TabSearchBox_PreviewKeyDown">
+                                <ui:TextBox.Icon>
+                                    <ui:SymbolIcon Symbol="Search24"/>
+                                </ui:TextBox.Icon>
+                            </ui:TextBox>
+                            <TextBlock x:Name="TabSearchHeader" Margin="14,4,0,4" FontSize="11"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                            <ListBox x:Name="TabSearchList" MaxHeight="440"
+                                     Background="Transparent" BorderThickness="0" Padding="6,0"
+                                     ItemTemplate="{StaticResource TabSearchTemplate}"
+                                     ItemContainerStyle="{StaticResource TabSearchRow}"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     PreviewMouseLeftButtonUp="TabSearchList_MouseUp"
+                                     KeyDown="TabSearchList_KeyDown"/>
+                        </StackPanel>
+                    </Border>
+                </Popup>
+
+                <!-- Tabs, then ＋ right after the last one. TabStripLayout offers the tabs the
+                     strip minus the button, and ChromeTabPanel shrinks them to fit, so the ＋
+                     can never be pushed out of sight.
+                     Background explicitly null, not merely unset: a themed default would make
+                     the strip hit-testable and swallow the clicks meant for the drag layer
+                     beneath, costing you window dragging everywhere the tabs do not reach. -->
+                <local:TabStripLayout Grid.Column="2" Background="{x:Null}">
+                    <ItemsControl x:Name="TabStrip" ItemTemplate="{StaticResource TabTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <local:ChromeTabPanel Loaded="TabPanel_Loaded"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+
+                    <Button Style="{StaticResource IconBtn}" Margin="2,0,0,0"
+                            Click="NewTab_Click" AutomationProperties.Name="新建标签页"
+                            ToolTip="在下面的工作目录新建 PowerShell　(Ctrl+T)">
+                        <ui:SymbolIcon Symbol="Add24" FontSize="14"/>
+                    </Button>
+                </local:TabStripLayout>
+            </Grid>
+
+            <!-- Caption buttons only: no Title, no Icon. Declared last so it sits above the
+                 drag layer. Keeping its rect this small is the whole point — see the comment
+                 at the top of this row. -->
+            <ui:TitleBar Grid.Column="1" Title="" Height="36" ShowHelp="False"/>
+        </Grid>
+
+        <!-- ═══════════ history sidebar ═══════════ -->
+        <Grid x:Name="SidebarPanel" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="12,2,12,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <ui:TextBox x:Name="SearchBoxInput" Grid.Column="0"
+                                PlaceholderText="搜索会话…" ClearButtonEnabled="True"
+                                FontSize="12.5" TextChanged="Search_TextChanged">
+                    <ui:TextBox.Icon>
+                        <ui:SymbolIcon Symbol="Search24"/>
+                    </ui:TextBox.Icon>
+                </ui:TextBox>
+
+                <Button Grid.Column="1" Style="{StaticResource IconBtn}" Margin="4,0,0,0"
+                            Click="RefreshHistory_Click" AutomationProperties.Name="刷新历史"
+                            ToolTip="重新扫描各 CLI 的对话记录">
+                    <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="15"/>
+                </Button>
+
+                <Button x:Name="MoreBtn" Grid.Column="2" Style="{StaticResource IconBtn}"
+                            Click="More_Click" AutomationProperties.Name="更多" ToolTip="更多">
+                    <ui:SymbolIcon Symbol="MoreHorizontal24" FontSize="15"/>
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem x:Name="RestoreHiddenItem"
+                                          Header="恢复已移除的记录" Click="RestoreHidden_Click"/>
+                            <MenuItem Header="打开索引目录" Click="OpenHistoryRoot_Click"/>
+                            <MenuItem Header="打开当前目录的 history" Click="OpenProjectHistory_Click"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
+
+                <Button Grid.Column="3" Style="{StaticResource IconBtn}"
+                            Click="ToggleTheme_Click" AutomationProperties.Name="主题"
+                            ToolTip="切换浅色 / 深色">
+                    <ui:SymbolIcon x:Name="ThemeGlyph" Symbol="WeatherMoon24" FontSize="15"/>
+                </Button>
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="17,0,12,6">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <RadioButton x:Name="SessionsMode" GroupName="SidebarMode" IsChecked="True"
+                                 Style="{StaticResource ModeTab}"
+                                 Checked="SidebarMode_Changed"
+                                 ToolTip="各 CLI 的对话记录">
+                        <TextBlock x:Name="HistoryHeader" Text="最近"/>
+                    </RadioButton>
+                    <TextBlock x:Name="HistoryCountLabel" FontSize="11" Margin="7,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                    <RadioButton x:Name="FolderMode" GroupName="SidebarMode" Margin="16,0,0,0"
+                                 Style="{StaticResource ModeTab}" Content="文件夹"
+                                 Checked="SidebarMode_Changed"
+                                 ToolTip="按项目分组的对话（claude、codex…）"/>
+                </StackPanel>
+                <ToggleButton x:Name="FavoritesToggle" HorizontalAlignment="Right"
+                              Style="{StaticResource IconToggle}" Width="26" Height="24"
+                              Checked="FavoritesToggle_Changed" Unchecked="FavoritesToggle_Changed"
+                              AutomationProperties.Name="只看收藏" ToolTip="只看收藏">
+                    <ui:SymbolIcon x:Name="FavoritesGlyph" Symbol="Star24" FontSize="14"/>
+                </ToggleButton>
+            </Grid>
+
+            <Grid x:Name="SessionsPanel" Grid.Row="2">
+                <ListBox x:Name="HistoryList"
+                             Background="Transparent" BorderThickness="0" Padding="0,0,6,12"
+                             ItemContainerStyle="{StaticResource HistoryRow}"
+                             ItemTemplate="{StaticResource HistoryItemTemplate}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.CanContentScroll="True"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling"
+                             VirtualizingPanel.IsVirtualizingWhenGrouping="True"
+                             VirtualizingPanel.ScrollUnit="Pixel"
+                             MouseDoubleClick="HistoryList_DoubleClick"
+                             KeyDown="HistoryList_KeyDown">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel/>
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.Panel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel/>
+                                </ItemsPanelTemplate>
+                            </GroupStyle.Panel>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" FontSize="11"
+                                                   Margin="17,14,0,4"
+                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ListBox.GroupStyle>
+                </ListBox>
+
+                <TextBlock x:Name="HistoryEmptyLabel" Text="没有历史记录" FontSize="12.5"
+                               HorizontalAlignment="Center" VerticalAlignment="Top"
+                               Margin="0,26,0,0" Visibility="Collapsed"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+            </Grid>
+
+            <!-- Projects → their conversations, from the index. Two levels, like Explorer. -->
+            <Grid x:Name="FolderPanel" Grid.Row="2" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <DockPanel Margin="12,0,12,4">
+                    <Button x:Name="FolderUpBtn" DockPanel.Dock="Left" Style="{StaticResource IconBtn}"
+                            Width="26" Height="26" Click="FolderUp_Click"
+                            AutomationProperties.Name="上一级" ToolTip="上一级　(Backspace)">
+                        <ui:SymbolIcon Symbol="ArrowUp24" FontSize="13"/>
+                    </Button>
+                    <TextBlock x:Name="FolderPathLabel" FontSize="11" Margin="6,0"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                </DockPanel>
+
+                <ListBox x:Name="FolderList" Grid.Row="1"
+                         Background="Transparent" BorderThickness="0" Padding="0,0,6,12"
+                         ItemContainerStyle="{StaticResource HistoryRow}"
+                         ItemTemplate="{StaticResource ProjectEntryTemplate}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         MouseDoubleClick="FolderList_DoubleClick"
+                         KeyDown="FolderList_KeyDown"/>
+
+                <TextBlock x:Name="FolderEmptyLabel" Grid.Row="1" FontSize="12.5"
+                           HorizontalAlignment="Center" VerticalAlignment="Top"
+                           Margin="12,26,12,0" TextWrapping="Wrap" TextAlignment="Center"
+                           Visibility="Collapsed"
+                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+            </Grid>
+
+            <StackPanel Grid.Row="3" Margin="17,6,12,10">
+                <TextBlock x:Name="StatusText" Text="就绪" FontSize="11"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                <TextBlock x:Name="ShellLabel" FontSize="11" Margin="0,3,0,0"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+            </StackPanel>
+        </Grid>
+
+        <GridSplitter x:Name="SidebarSplitter" Grid.Row="1" Grid.Column="3" Width="4"
+                          HorizontalAlignment="Stretch" Background="Transparent"
+                          ResizeBehavior="PreviousAndNext"/>
+
+        <!-- ═══════════ content panel ═══════════ -->
+        <Border Grid.Row="1" Grid.Column="4"
+                    Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- The terminal itself: meant to look and type exactly like PowerShell. -->
+                <Grid Grid.Row="0">
+                    <Grid x:Name="TerminalHost"/>
+
+                    <StackPanel x:Name="TerminalEmptyHint"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    IsHitTestVisible="False">
+                        <ui:SymbolIcon Symbol="WindowConsole20" FontSize="34"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                        <TextBlock Text="没有打开的终端" FontSize="13.5" Margin="0,14,0,0"
+                                       HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Text="在下面填好工作目录按回车，或点标签栏的 ＋ / 按 Ctrl+T"
+                                       FontSize="11.5" Margin="0,7,0,0"
+                                       HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                        <TextBlock Text="该目录下的每个终端都会把记录写进它自己的 history 文件夹"
+                                       FontSize="11.5" Margin="0,3,0,0"
+                                       HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Launch bar: pick a folder, open a shell in it. Nothing else — what
+                     runs inside the shell is the shell's business, not this app's. -->
+                <Border Grid.Row="1" Padding="12,8" BorderThickness="0,1,0,0"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <ui:TextBox x:Name="WorkingDirBox" Grid.Column="0" Margin="0,0,6,0"
+                                    FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                                    PlaceholderText="工作目录"
+                                    KeyDown="WorkingDir_KeyDown"
+                                    TextChanged="WorkingDir_TextChanged"
+                                    ToolTip="回车即在此目录打开一个新终端">
+                            <ui:TextBox.Icon>
+                                <ui:SymbolIcon Symbol="Folder24"/>
+                            </ui:TextBox.Icon>
+                        </ui:TextBox>
+
+                        <Button Grid.Column="1" Style="{StaticResource IconBtn}"
+                                Width="32" Height="32"
+                                Click="BrowseDir_Click"
+                                AutomationProperties.Name="选择工作目录"
+                                ToolTip="选择工作目录">
+                            <ui:SymbolIcon Symbol="FolderOpen24" FontSize="16"/>
+                        </Button>
+
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</ui:FluentWindow>
